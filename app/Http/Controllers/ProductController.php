@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
-
 class ProductController extends Controller
 {
     public function index()
@@ -45,7 +44,6 @@ class ProductController extends Controller
                 foreach ($request->file('images') as $image) {
                     $path = $image->store('products', 'public');
 
-                    // Use the relationship to create images
                     $product->images()->create([
                         'image_path' => $path
                     ]);
@@ -63,50 +61,98 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load('images'); // Eager load images
-        return view('products.show', compact('product'));
+        $product->load('images', 'inventoryItems');
+        $availableInventoryItems = InventoryItem::all();
+
+        return view('products.show', compact('product', 'availableInventoryItems'));
     }
 
-    public function edit(Product $product)
+    public function addInventoryItem(Request $request, Product $product)
 {
-    $product->load('images');
-    $categories = Category::all();
-    $inventoryItems = InventoryItem::all(); // Get inventory items
-    
-    return view('products.edit', compact('product', 'categories', 'inventoryItems'));
+    $request->validate([
+        'inventory_item_id' => 'required|exists:inventory_items,id',
+        'quantity_used' => 'required|numeric|min:0.0001',
+    ]);
+
+    // Attach the inventory item to the product
+    $product->inventoryItems()->attach($request->inventory_item_id, [
+        'quantity_used' => $request->quantity_used,
+    ]);
+
+    return redirect()->route('products.show', $product)->with('success', 'Inventory item added successfully!');
 }
 
-    public function update(Request $request, Product $product)
+public function toggleStatus(Product $product, Request $request)
+{
+    $request->validate([
+        'active' => 'required|boolean',
+    ]);
+
+    $product->update(['active' => $request->active]);
+
+    return redirect()->back()->with('success', 'Product status updated successfully.');
+}
+
+
+
+    public function edit(Product $product)
     {
-        $validated = $request->validate([
-            'name' => 'required',
-            'price' => 'required|numeric',
-            'category_id' => 'required|exists:categories,id',
-            'images.*' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
-        ]);
+        $product->load('images', 'inventoryItems');
+        $categories = Category::all();
+        $inventoryItems = InventoryItem::all(); // Get all inventory items
 
-        // Update the product
-        $product->update($validated);
+        // Fetch selected inventory items and their quantities
+        $selectedInventoryItems = $product->inventoryItems->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'stock_quantity' => $item->stock_quantity,
+                'storage_unit' => $item->storage_unit,
+                'usage_unit' => $item->usage_unit,
+                'conversion_factor' => $item->conversion_factor,
+            ];
+        });
 
-        // Handle new image uploads
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('products', 'public');
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'image_path' => $path
-                ]);
-            }
-        }
+        // Fetch quantities from the pivot table
+        $quantities = $product->inventoryItems->pluck('pivot.quantity', 'id');
 
-        $inventoryItems = [];
-        foreach ($request->input('inventory_items', []) as $itemId) {
-            $inventoryItems[$itemId] = ['quantity' => $request->input('quantities.' . $itemId, 1)];
-        }
-        $product->inventoryItems()->sync($inventoryItems);
-
-        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
+        return view('products.edit', compact(
+            'product',
+            'categories',
+            'inventoryItems',
+            'selectedInventoryItems',
+            'quantities'
+        ));
     }
+
+    public function update(Request $request, Product $product)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'price' => 'required|numeric|min:0',
+        'category_id' => 'required|exists:categories,id',
+        'inventory_items' => 'array',
+        'inventory_items.*' => 'exists:inventory_items,id',
+        'quantities' => 'array',
+        'quantities.*' => 'nullable|numeric|min:1',
+    ]);
+
+    // Update product details
+    $product->update($request->only('name', 'price', 'description', 'category_id'));
+
+    // Sync inventory items and their quantities
+    $inventoryItems = [];
+    foreach ($request->input('quantities', []) as $itemId => $quantity) {
+        if (!empty($quantity) && $quantity > 0) {
+            $inventoryItems[$itemId] = ['quantity_used' => $quantity];
+        }
+    }
+
+    $product->inventoryItems()->sync($inventoryItems);
+
+    return redirect()->route('products.index')->with('success', 'Product updated successfully!');
+}
+
 
     public function destroy(Product $product)
     {

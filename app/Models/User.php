@@ -33,6 +33,16 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    public function receivesBroadcastNotificationsOn()
+    {
+        return 'users.' . $this->id;
+    }
+
+    public function routeNotificationForMail()
+    {
+        return $this->email;
+    }
+
     /**
      * Get the attributes that should be cast.
      *

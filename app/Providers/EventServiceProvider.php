@@ -3,9 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Blade;
+use App\Models\InventoryItem;
+use App\Observers\InventoryItemObserver;
 
-use Livewire\Livewire;
-use App\Livewire\CreateOrder;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,8 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register the search-select component
-        // Blade::component('search-select', \App\View\Components\SearchSelect::class);
-        Livewire::component('create-order', CreateOrder::class);
-        
+        InventoryItem::observe(InventoryItemObserver::class);
     }
 }

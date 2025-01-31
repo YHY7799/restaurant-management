@@ -33,18 +33,35 @@ class Product extends Model
     }
 
     public function inventoryItems()
-    {
-        return $this->belongsToMany(InventoryItem::class, 'inventory_item_product')
-            ->withPivot('quantity')
-            ->withTimestamps();
-    }
+{
+    return $this->belongsToMany(InventoryItem::class)
+        ->withPivot('quantity_used')
+        ->withTimestamps();
+}
 
-    public function getTotalCostAttribute()
-    {
-        return $this->inventoryItems->sum(function ($item) {
-            return $item->pivot->quantity * $item->cost_per_unit;
-        });
-    }
+public function calculateCost()
+{
+    return $this->inventoryItems->sum(function ($item) {
+        if ($item->conversion_factor <= 0) {
+            return 0; // Prevent division by zero errors
+        }
+
+        // Convert quantity used to storage unit and multiply by the cost per storage unit
+        return ($item->pivot->quantity_used / $item->conversion_factor) * $item->cost_per_unit;
+    });
+}
+
+public function formattedCost()
+{
+    return number_format($this->calculateCost(), 2);
+}
+
+// Ensure total cost calculation also considers the conversion factor
+public function getTotalCostAttribute()
+{
+    return $this->calculateCost();
+}
+
 
 
     protected static function booted()

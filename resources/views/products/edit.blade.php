@@ -20,6 +20,7 @@
             @csrf
             @method('PUT')
 
+            <!-- Product Name -->
             <div class="mb-4">
                 <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
                 <input type="text" name="name" id="name"
@@ -27,6 +28,7 @@
                     value="{{ old('name', $product->name) }}" required>
             </div>
 
+            <!-- Price -->
             <div class="mb-4">
                 <label for="price" class="block text-sm font-medium text-gray-700">Price</label>
                 <input type="number" name="price" id="price"
@@ -34,137 +36,39 @@
                     step="0.01" value="{{ old('price', $product->price) }}" required>
             </div>
 
-            <div class="mb-4">
-                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-                <textarea name="description" id="description"
-                    class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    rows="4">{{ old('description', $product->description) }}</textarea>
-            </div>
+            <!-- Inventory Items -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Inventory Items</h3>
+                <div class="relative">
+                    <!-- Search Input -->
+                    <input type="text" id="inventory-search"
+                        class="mb-4 w-full px-4 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="Search inventory items..." />
 
-            <div class="mb-4">
-                <label for="images" class="block text-gray-700 text-sm font-bold mb-2">Product Images</label>
-                <input type="file" name="images[]" id="images" multiple
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                @error('images.*')
-                    <span class="text-red-500 text-xs italic">{{ $message }}</span>
-                @enderror
-            </div>
+                    <!-- Inventory List -->
+                    <ul id="inventory-list" class="max-h-64 overflow-auto border rounded shadow-lg p-2 bg-white">
+                        @foreach ($inventoryItems as $inventoryItem)
+                            <li class="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer">
+                                <label>
+                                    <input type="checkbox" name="inventory_items[]" value="{{ $inventoryItem->id }}"
+                                        class="inventory-checkbox"
+                                        {{ $product->inventoryItems->contains($inventoryItem->id) ? 'checked' : '' }}>
+                                    {{ $inventoryItem->name }}
+                                </label>
 
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Inventory Items</label>
-                    
-                    <!-- Searchable Dropdown -->
-                    <select name="inventory_items[]" 
-                            id="inventorySearch" 
-                            class="w-full"
-                            multiple
-                            placeholder="Search and add inventory items...">
-                        @foreach($inventoryItems as $item)
-                            <option value="{{ $item->id }}" 
-                                {{ $product->inventoryItems->contains($item->id) ? 'selected' : '' }}
-                                data-quantity="{{ $product->inventoryItems->find($item->id)->pivot->quantity ?? 1 }}">
-                                {{ $item->name }}
-                            </option>
+                                <!-- Quantity Input (Hidden by Default) -->
+                                <input type="number" name="quantities[{{ $inventoryItem->id }}]"
+                                    value="{{ $product->inventoryItems->find($inventoryItem->id)->pivot->quantity ?? '' }}"
+                                    min="1"
+                                    class="quantity-input border rounded px-2 py-1 w-20 {{ $product->inventoryItems->contains($inventoryItem->id) ? '' : 'hidden' }}"
+                                    placeholder="Qty">
+                            </li>
                         @endforeach
-                    </select>
-                </div>
-            
-                <!-- Selected Items List -->
-                <div id="selectedItems" class="space-y-2">
-                    @foreach($product->inventoryItems as $item)
-                        <div class="flex items-center gap-3 selected-item" data-id="{{ $item->id }}">
-                            <span class="flex-1">{{ $item->name }}</span>
-                            <input type="number" 
-                                   name="quantities[{{ $item->id }}]"
-                                   value="{{ $item->pivot->quantity }}"
-                                   min="1" 
-                                   class="w-20 px-2 py-1 border rounded"
-                                   placeholder="Qty">
-                            <button type="button" 
-                                    class="text-red-500 hover:text-red-700 remove-item"
-                                    title="Remove item">
-                                ✕
-                            </button>
-                        </div>
-                    @endforeach
+                    </ul>
                 </div>
             </div>
-            
-            @push('scripts')
-            <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-            <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
-            
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Initialize Tom Select
-                new TomSelect('#inventorySearch', {
-                    plugins: ['remove_button'],
-                    create: false,
-                    searchField: 'text',
-                    render: {
-                        option: function(data, escape) {
-                            return `<div>${escape(data.text)}</div>`;
-                        }
-                    },
-                    onItemAdd: function(value, item) {
-                        const quantity = item.dataset.quantity || 1;
-                        addItemToList(value, item.textContent, quantity);
-                    },
-                    onItemRemove: function(value) {
-                        document.querySelector(`.selected-item[data-id="${value}"]`).remove();
-                    }
-                });
-            
-                // Add existing items on load
-                document.querySelectorAll('#inventorySearch option[selected]').forEach(option => {
-                    const quantity = option.dataset.quantity || 1;
-                    addItemToList(option.value, option.textContent, quantity);
-                });
-            
-                // Handle manual removal
-                document.getElementById('selectedItems').addEventListener('click', function(e) {
-                    if(e.target.classList.contains('remove-item')) {
-                        const itemId = e.target.closest('.selected-item').dataset.id;
-                        const ts = document.querySelector('#inventorySearch').tomselect;
-                        ts.removeItem(itemId);
-                        e.target.closest('.selected-item').remove();
-                    }
-                });
-            
-                function addItemToList(id, name, quantity) {
-                    if(document.querySelector(`.selected-item[data-id="${id}"]`)) return;
-            
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center gap-3 selected-item';
-                    div.dataset.id = id;
-                    div.innerHTML = `
-                        <span class="flex-1">${name}</span>
-                        <input type="number" 
-                               name="quantities[${id}]"
-                               value="${quantity}"
-                               min="1" 
-                               class="w-20 px-2 py-1 border rounded"
-                               placeholder="Qty">
-                        <button type="button" 
-                                class="text-red-500 hover:text-red-700 remove-item"
-                                title="Remove item">
-                            ✕
-                        </button>
-                    `;
-                    document.getElementById('selectedItems').appendChild(div);
-                }
-            });
-            </script>
-            <style>
-            .ts-control {
-                padding: 8px 12px;
-                border-radius: 6px;
-                border: 1px solid #e5e7eb;
-            }
-            </style>
-            @endpush
 
+            <!-- Category -->
             <div class="mb-4">
                 <label for="category_id" class="block text-sm font-medium text-gray-700">Category</label>
                 <select name="category_id" id="category_id"
@@ -180,15 +84,7 @@
                 </select>
             </div>
 
-            <div class="mb-4">
-                <label for="active" class="block text-sm font-medium text-gray-700">Active</label>
-                <select name="active" id="active"
-                    class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
-                    <option value="1" {{ old('active', $product->active) == 1 ? 'selected' : '' }}>Yes</option>
-                    <option value="0" {{ old('active', $product->active) == 0 ? 'selected' : '' }}>No</option>
-                </select>
-            </div>
-
+            <!-- Buttons -->
             <div class="flex space-x-4">
                 <button type="submit"
                     class="px-6 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600">Update</button>
@@ -197,4 +93,35 @@
             </div>
         </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('inventory-search');
+            const inventoryList = document.getElementById('inventory-list');
+            const checkboxes = document.querySelectorAll('.inventory-checkbox');
+
+            // Filter inventory items based on search input
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                document.querySelectorAll('#inventory-list li').forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+
+            // Show/hide quantity input based on checkbox state
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function () {
+                    const quantityInput = this.closest('li').querySelector('.quantity-input');
+                    if (this.checked) {
+                        quantityInput.classList.remove('hidden');
+                        quantityInput.focus();
+                    } else {
+                        quantityInput.classList.add('hidden');
+                        quantityInput.value = '';
+                    }
+                });
+            });
+        });
+    </script>
 @endsection

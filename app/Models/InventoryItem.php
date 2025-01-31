@@ -14,14 +14,22 @@ class InventoryItem extends Model
         'name',
         'description',
         'cost_per_unit',
-        'stock_quantity'
+        'stock_quantity',
+        'storage_unit',
+        'usage_unit',
+        'conversion_factor'
     ];
 
-    public function products()
-{
-    return $this->belongsToMany(Product::class, 'inventory_item_product')
-        ->withPivot('quantity')
-        ->withTimestamps();
-}
+    // Convert stock to usage units
+    public function getAvailableInUsageAttribute()
+    {
+        return $this->stock_quantity * $this->conversion_factor;
+    }
 
+    public function products()
+    {
+        return $this->belongsToMany(Product::class)
+            ->withPivot('quantity_used')
+            ->withTimestamps();
+    }
 }

@@ -13,7 +13,7 @@ class InventoryItemController extends Controller
      */
     public function index()
     {
-        $items = InventoryItem::latest()->paginate(10);
+        $items = InventoryItem::with('products')->latest()->paginate(10);
         return view('inventory.index', compact('items'));
     }
 
@@ -34,7 +34,11 @@ class InventoryItemController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'cost_per_unit' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0'
+            'stock_quantity' => 'required|numeric|min:0',
+            'storage_unit' => 'required|string|max:20',
+            'usage_unit' => 'required|string|max:20',
+            'conversion_factor' => 'required|numeric|min:0.0001',
+            'min_stock' => 'nullable|numeric|min:0'
         ]);
 
         InventoryItem::create($validated);
@@ -48,7 +52,7 @@ class InventoryItemController extends Controller
      */
     public function show(string $id)
     {
-        $item = InventoryItem::findOrFail($id);
+        $item = InventoryItem::with('products')->findOrFail($id);
         return view('inventory.show', compact('item'));
     }
 
@@ -61,6 +65,15 @@ class InventoryItemController extends Controller
         return view('inventory.edit', compact('item'));
     }
 
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
+        $items = InventoryItem::where('name', 'like', "%{$query}%")
+            ->limit(10)
+            ->get();
+        return response()->json($items);
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -70,7 +83,11 @@ class InventoryItemController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'cost_per_unit' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0'
+            'stock_quantity' => 'required|numeric|min:0',
+            'storage_unit' => 'required|string|max:20',
+            'usage_unit' => 'required|string|max:20',
+            'conversion_factor' => 'required|numeric|min:0.0001',
+            'min_stock' => 'nullable|numeric|min:0'
         ]);
 
         $item = InventoryItem::findOrFail($id);
@@ -86,9 +103,9 @@ class InventoryItemController extends Controller
     public function destroy(string $id)
     {
         $item = InventoryItem::findOrFail($id);
-        
+
         // Prevent deletion if used in products
-        if($item->products()->exists()) {
+        if ($item->products()->exists()) {
             return redirect()->back()
                 ->with('error', 'Cannot delete item - it is being used in products');
         }
