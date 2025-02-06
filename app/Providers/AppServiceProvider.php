@@ -6,15 +6,18 @@ use Illuminate\Support\ServiceProvider;
 
 use Livewire\Livewire;
 use App\Livewire\CreateOrder;
+use App\Cart\Cart;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
      */
-    public function register(): void
+    public function register()
     {
-        //
+        $this->app->bind('cart', function () {
+            return new Cart();
+        });
     }
 
     /**

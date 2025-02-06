@@ -13,9 +13,10 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with('customer', 'items.product')->get();
+        $orders = Order::latest()->get();
         return view('orders.index', compact('orders'));
     }
+
 
     public function create()
     {
@@ -23,38 +24,38 @@ class OrderController extends Controller
     }
 
     public function store(Request $request)
-{
-    $request->validate([
-        'customer_id' => 'nullable|exists:customers,id', // Make customer_id optional
-        'items' => 'required|array',
-        'items.*.product_id' => 'required|exists:products,id',
-        'items.*.quantity' => 'required|integer|min:1',
-    ]);
-
-    $order = Order::create([
-        'customer_id' => $request->customer_id, // Can be null
-        'order_number' => 'ORD' . time(),
-        'status' => 'initialized',
-        'total_amount' => 0, // Calculate total in the next step
-    ]);
-
-    $totalAmount = 0;
-
-    foreach ($request->items as $item) {
-        $product = Product::find($item['product_id']);
-        $orderItem = $order->items()->create([
-            'product_id' => $item['product_id'],
-            'quantity' => $item['quantity'],
-            'price' => $product->price,
+    {
+        $request->validate([
+            'customer_id' => 'nullable|exists:customers,id', // Make customer_id optional
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        $totalAmount += $product->price * $item['quantity'];
+        $order = Order::create([
+            'customer_id' => $request->customer_id, // Can be null
+            'order_number' => 'ORD' . time(),
+            'status' => 'pending',
+            'total_amount' => 0, // Calculate total in the next step
+        ]);
+
+        $totalAmount = 0;
+
+        foreach ($request->items as $item) {
+            $product = Product::find($item['product_id']);
+            $orderItem = $order->items()->create([
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => $product->price,
+            ]);
+
+            $totalAmount += $product->price * $item['quantity'];
+        }
+
+        $order->update(['total_amount' => $totalAmount]);
+
+        return redirect()->route('orders.index')->with('success', 'Order created successfully.');
     }
-
-    $order->update(['total_amount' => $totalAmount]);
-
-    return redirect()->route('orders.index')->with('success', 'Order created successfully.');
-}
 
     public function show(Order $order)
     {
@@ -63,12 +64,13 @@ class OrderController extends Controller
 
     public function updateStatus(Request $request, Order $order)
     {
-        $request->validate([
-            'status' => 'required|in:initialized,preparing,completed,paid',
+        $validated = $request->validate([
+            'status' => 'required|in:pending,preparing,completed',
         ]);
 
-        $order->update(['status' => $request->status]);
+        $order->status = $validated['status'];
+        $order->save();
 
-        return redirect()->back()->with('success', 'Order status updated.');
+        return redirect()->back()->with('success', 'Order status updated successfully!');
     }
 }

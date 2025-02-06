@@ -15,6 +15,11 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'aliases' => [
+    // Other aliases
+    'Cart' => \App\Cart\Facades\Cart::class,
+],
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
