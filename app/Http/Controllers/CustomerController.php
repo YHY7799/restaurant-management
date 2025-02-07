@@ -16,25 +16,25 @@ class CustomerController extends Controller
 
     // View the menu
     public function viewMenu($category = null)
-    {
-        // Fetch all active products
+{
+    // Fetch all active products with images
+    $products = Product::where('active', true)->with('images');
 
-        $products = Product::where('active', true);
-
-        // Filter products by category if a category is selected
-        if ($category) {
-            $products->where('category_id', $category);
-        }
-
-        // Get the filtered products
-        $products = $products->get();
-
-        // Fetch all categories
-        $categories = Category::all();
-
-        // Pass products and categories to the view
-        return view('customer.menu', compact('products', 'categories'));
+    // Filter products by category if a category is selected
+    if ($category) {
+        $products->where('category_id', $category);
     }
+
+    // Execute the query and get results
+    $products = $products->get();
+
+    // Fetch all categories
+    $categories = Category::all();
+
+    // Pass products and categories to the view
+    return view('customer.menu', compact('products', 'categories'));
+}
+
 
     public function viewMenuByCategory(Category $category)
     {
@@ -100,7 +100,7 @@ class CustomerController extends Controller
             // Create the order
             $order = new Order();
             $order->order_number = $orderNumber;
-            $$order->customer_name = $customerName;;
+            $order->customer_name = $customerName;;
             $order->customer_phone = $request->phone;
             $order->status = 'pending';
             $order->total_amount = $totalAmount;
