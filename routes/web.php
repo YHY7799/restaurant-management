@@ -8,6 +8,8 @@ use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\InventoryItemController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\SearchController;
+
 
 
 Route::get('/', function () {
@@ -33,8 +35,11 @@ Route::delete('/product-images/{productImage}', [ProductImageController::class, 
 Route::get('/menu', [CustomerController::class, 'viewMenu'])->name('customer.menu');
 Route::get('/menu/{category?}', [CustomerController::class, 'viewMenu'])->name('customer.menu');
 Route::post('/cart/add', [CustomerController::class, 'addToCart'])->name('customer.cart.add');
-Route::get('/cart', [CustomerController::class, 'viewCart'])->name('customer.cart.view');
+Route::get('/cart', [CustomerController::class, 'viewCart'])->name('customer.cart');
 Route::post('/cart/remove', [CustomerController::class, 'removeFromCart'])->name('customer.cart.remove');
+Route::post('/cart/update', [CustomerController::class, 'update'])->name('customer.cart.update');
 Route::post('/orders/{order}/update-status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
 Route::post('/order/submit', [CustomerController::class, 'submitOrder'])->name('customer.order.submit');
 Route::get('/order/confirmation', [CustomerController::class, 'orderConfirmation'])->name('customer.order.confirmation'); 
+
+Route::get('/search', [SearchController::class, 'searchApi'])->name('search');

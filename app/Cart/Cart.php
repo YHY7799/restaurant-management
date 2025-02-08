@@ -30,6 +30,27 @@ class Cart
     }
 
     /**
+     * Update the quantity of a product in the cart.
+     */
+    public function update($productId, $quantity)
+    {
+        $cart = Session::get($this->cartKey, []);
+
+        if (isset($cart[$productId])) {
+            // Update the quantity
+            $cart[$productId]['quantity'] = $quantity;
+
+            // If the quantity is zero or less, remove the item
+            if ($cart[$productId]['quantity'] <= 0) {
+                unset($cart[$productId]);
+            }
+
+            // Save the updated cart back to the session
+            Session::put($this->cartKey, $cart);
+        }
+    }
+
+    /**
      * Remove a product from the cart.
      */
     public function remove($productId)

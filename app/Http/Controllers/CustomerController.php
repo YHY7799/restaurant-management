@@ -16,24 +16,24 @@ class CustomerController extends Controller
 
     // View the menu
     public function viewMenu($category = null)
-{
-    // Fetch all active products with images
-    $products = Product::where('active', true)->with('images');
+    {
+        // Fetch all active products with images
+        $products = Product::where('active', true)->with('images');
 
-    // Filter products by category if a category is selected
-    if ($category) {
-        $products->where('category_id', $category);
+        // Filter products by category if a category is selected
+        if ($category) {
+            $products->where('category_id', $category);
+        }
+
+        // Execute the query and get results
+        $products = $products->get();
+
+        // Fetch all categories
+        $categories = Category::all();
+
+        // Pass products and categories to the view
+        return view('customer.menu', compact('products', 'categories'));
     }
-
-    // Execute the query and get results
-    $products = $products->get();
-
-    // Fetch all categories
-    $categories = Category::all();
-
-    // Pass products and categories to the view
-    return view('customer.menu', compact('products', 'categories'));
-}
 
 
     public function viewMenuByCategory(Category $category)
@@ -64,8 +64,22 @@ class CustomerController extends Controller
 
     public function viewCart()
     {
-        $cartItems = Cart::content();
-        return view('customer.cart', compact('cartItems'));
+        // Fetch the cart items
+        $cart = Cart::content();
+
+        // Pass the cart items to the view
+        return view('customer.cart', compact('cart'));
+    }
+
+    public function update(Request $request)
+    {
+        $productId = $request->input('product_id');
+        $quantity = $request->input('quantity');
+
+        // Update the cart using the Cart facade
+        Cart::update($productId, $quantity);
+
+        return redirect()->route('customer.cart')->with('success', 'Cart updated successfully');
     }
 
     public function removeFromCart(Request $request)
